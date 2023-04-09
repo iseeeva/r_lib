@@ -1,0 +1,15 @@
+{
+  "name": "r_lib",
+  "version": "1.0.0",
+  "description": "Hex Reading Library",
+  "main": "./src/lib/r_lib.mjs",
+  "scripts": {
+    "test": "node ./test/index.mjs"
+  },
+  "author": "iseeeva",
+  "license": "ISC",
+  "dependencies": {
+    "@petamoriken/float16": "^3.7.0",
+    "lodash-es": "^4.17.21"
+  }
+}
