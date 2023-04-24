@@ -11,8 +11,10 @@ export class HexReader {
      * Config of Read Method
      */
     const Config = {
-      File: { Name: '', Stream: 0 },
-      Posses: [], // scan posses array
+      Read: {
+        File: { Name: '', Stream: 0 },
+        Posses: [], // scan posses array
+      },
     }
 
     /**
@@ -26,13 +28,16 @@ export class HexReader {
       // Okunan Alan?
       let ReadBuff = Buffer.alloc(ReadTo, 0)
 
-      if (typeof Config.Posses[PosID] !== 'number')
-        Config.Posses[PosID] = 0
+      if (typeof Config.Read.Posses[PosID] !== 'number')
+        Config.Read.Posses[PosID] = 0
 
       try {
-        Config.File.Stream = fs.openSync(Filename, 'r')
-        Config.File.Name = Filename
-        fs.readSync(Config.File.Stream, ReadBuff, 0, ReadTo, Config.Posses[PosID])
+        if (Config.Read.File.Name !== Filename) {
+          fs.closeSync(Config.Read.File.Stream)
+          Config.Read.File.Stream = fs.openSync(Filename, 'r')
+          Config.Read.File.Name = Filename
+        }
+        fs.readSync(Config.Read.File.Stream, ReadBuff, 0, ReadTo, Config.Read.Posses[PosID])
       }
       catch (e) {
         throw new Error(`${Filename} cant be opened`)
@@ -40,10 +45,10 @@ export class HexReader {
 
       if (isPlainObject(Options)) {
         if (hasOwn(Options, 'add_pos') && Options.add_pos === true)
-          Config.Posses[PosID] += ReadTo
+          Config.Read.Posses[PosID] += ReadTo
 
         if (hasOwn(Options, 'swap_endian') && Options.swap_endian === true)
-          ReadBuff = endian(ReadBuff.toString('hex'))
+          ReadBuff = endian(ReadBuff)
 
         if (hasOwn(Options, 'readAs') && typeof Options.readAs === 'string')
           return readAs(Options.readAs)
@@ -70,6 +75,9 @@ export class HexReader {
               throw new Error(`${type} is unknown for readAs`)
           }
         }
+        else {
+          throw new TypeError('no method defined for the type of this value')
+        }
       }
       return ReadBuff
     }
@@ -80,11 +88,11 @@ export class HexReader {
      * @returns {Array|number}
      */
     this.getOffset = function (PosID) {
-      if (PosID == null) { return Config.Posses }
+      if (PosID == null) { return Config.Read.Posses }
       else if (typeof PosID === 'number') {
-        if (typeof Config.Posses[PosID] !== 'number')
-          Config.Posses[PosID] = 0
-        return Config.Posses[PosID]
+        if (typeof Config.Read.Posses[PosID] !== 'number')
+          Config.Read.Posses[PosID] = 0
+        return Config.Read.Posses[PosID]
       }
       else { throw new TypeError('The PosID must be a number') }
     }
@@ -96,10 +104,10 @@ export class HexReader {
      */
     this.setOffset = function (PosID, value) {
       if (typeof PosID === 'number' && typeof value === 'number') {
-        if (typeof Config.Posses[PosID] !== 'number')
-          Config.Posses[PosID] = 0
+        if (typeof Config.Read.Posses[PosID] !== 'number')
+          Config.Read.Posses[PosID] = 0
 
-        Config.Posses[PosID] = value
+        Config.Read.Posses[PosID] = value
         return true
       }
       else {
@@ -111,21 +119,27 @@ export class HexReader {
 
 /**
  * Endian Swapping Function
- * @param {string} hexStr Hex String
- * @returns {Buffer} Hex Buffer
+ * @param {Buffer} Input Input Buffer
+ * @returns {Buffer} Swapped Buffer
  */
-export function endian(hexStr) {
-  const newHexStr = (hexStr.length % 2 ? `0${hexStr}` : hexStr)
-  const reversedHex = _.chunk(newHexStr, 2).reverse().flat().join('')
-  return Buffer.from(reversedHex, 'hex')
+export function endian(Input) {
+  if (Buffer.isBuffer(Input)) {
+    Input = Input.toString('hex')
+    Input = Input.length % 2 ? `0${Input}` : Input
+    Input = _.chunk(Input, 2).reverse().flat().join('')
+    return Buffer.from(Input, 'hex')
+  }
+  else {
+    throw new TypeError('Input must be a Buffer')
+  }
 }
 
 /**
  * Value Converter Function
- * @param {Buffer|number} value
+ * @param {number} value
  * @param {string} type
  * @param {{swap_endian:boolean}} options
- * @returns {Buffer|null}
+ * @returns Buffer
  */
 export function readAs(value, type, options) {
   const getHex = i => (`00${i.toString(16)}`).slice(-2)
@@ -143,6 +157,11 @@ export function readAs(value, type, options) {
         view.setInt16(0, value)
         ocean = Buffer.from(Array.from({ length: 2 }, (_, i) => getHex(view.getUint8(i))).join(''), 'hex')
         break
+      case 'int32_hex': // Integer 32 to Hex Buffer
+        view = new DataViewEX(new ArrayBuffer(4))
+        view.setInt32(0, value)
+        ocean = Buffer.from(Array.from({ length: 4 }, (_, i) => getHex(view.getUint8(i))).join(''), 'hex')
+        break
       case 'float_hex': // Float32 to Hex Buffer
         view = new DataViewEX(new ArrayBuffer(4))
         view.setFloat32(0, value)
@@ -152,10 +171,13 @@ export function readAs(value, type, options) {
         throw new Error(`${type} is unknown for readAs`)
     }
   }
+  else {
+    throw new TypeError('no method defined for the type of this value')
+  }
 
   if (isPlainObject(options)) {
     if (hasOwn(options, 'swap_endian') && options.swap_endian === true)
-      ocean = endian(ocean.toString('hex'))
+      ocean = endian(ocean)
   }
 
   return ocean
