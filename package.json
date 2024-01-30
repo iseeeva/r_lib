@@ -1,0 +1,33 @@
+{
+  "name": "@twisine/r_lib",
+  "description": "Hex Reading Things",
+  "version": "1.0.5",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "package.json",
+    "README.md"
+  ],
+  "repository": {
+    "url": "git://github.com/iseeeva/r_lib.git"
+  },
+  "scripts": {
+    "test": "vitest",
+    "build-ts": "tsc",
+    "watch-ts": "tsc -w",
+    "lint": "eslint src/**/*.ts",
+    "lint-fix": "eslint src/**/*.ts --fix",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@petamoriken/float16": "3.8.4"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "0.34.0",
+    "@types/node": "20.11.5",
+    "typescript": "5.3.2",
+    "eslint": "8.55.0",
+    "vitest": "1.2.1"
+  }
+}
